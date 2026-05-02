@@ -1,0 +1,5 @@
+name = "sfida60"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-05-02"
+
+[env.production]
