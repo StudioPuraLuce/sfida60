@@ -30,7 +30,7 @@ const BLOCKS = {
 
 const ACTIVITIES = ["Palestra 🏋️", "Mare 🌊", "Chiese ⛪", "Flair & Musica 🎸", "Riposo 🛌"];
 
-const START = new Date("2025-05-02T00:00:00");
+const START = new Date("2026-05-04T00:00:00");
 const TOTAL = 60;
 
 const SYSTEM_PROMPT = `Sei il Coach della Sfida 60 Giorni: Decompressione Cervello di Chris.
