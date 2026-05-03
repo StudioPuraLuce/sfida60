@@ -47,6 +47,30 @@ const TG_URL  = "https://t.me/sfida60_bot";
 const DOC_URL = "https://docs.google.com/document/d/1l66Wo8w18QTg7avNky8rb5iE1FKkcJZz8lyCuGiIkiU/edit";
 
 // ═══════════════════════════════════════════════════════════════════
+// PREDICTIVE SYSTEM — Fasi
+// ═══════════════════════════════════════════════════════════════════
+
+const PHASES = [
+  { id:1, name:"Luna di Miele",     range:[0,6],   color:"#2ECC71", emoji:"🌙",
+    focus:"setup, aspettative alte",
+    headline:"L'entusiasmo regge — usa questa energia per cementare il Boot" },
+  { id:2, name:"Primo Calo",        range:[7,13],  color:"#F5A623", emoji:"⚡",
+    focus:"Boot 06:00, Messa, primo cedimento",
+    headline:"Il Boot delle 06:00 diventa negoziabile — qui si vede chi sei" },
+  { id:3, name:"Zona Critica",      range:[14,24], color:"#E74C3C", emoji:"🔥",
+    focus:"routine non automatica, qui si vince",
+    headline:"Novità finita, routine non automatica — qui si vince o si perde" },
+  { id:4, name:"Disciplina o Noia", range:[25,44], color:"#FF8C00", emoji:"⚙️",
+    focus:"auto-sabotaggio, pattern detection",
+    headline:"Disciplina acquisita ma fragile — le micro-deviazioni sono il nemico" },
+  { id:5, name:"Sprint Finale",     range:[45,59], color:"#FFD700", emoji:"🏁",
+    focus:"countdown, retrospettiva, chiusura",
+    headline:"La fine è visibile — porta a casa il risultato" },
+];
+
+const getPhase = (i) => PHASES.find(p => i >= p.range[0] && i <= p.range[1]) || PHASES[PHASES.length-1];
+
+// ═══════════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════
 
@@ -113,6 +137,145 @@ function Radar({ data, size=180 }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// PHASE BANNER — Predictive system display
+// ═══════════════════════════════════════════════════════════════════
+
+function PhaseBanner({ phase, dayInPhase, phaseLength, score, currentStreak, vulnerability }) {
+  return (
+    <div style={{
+      background:`linear-gradient(135deg, ${phase.color}15 0%, ${phase.color}05 100%)`,
+      border:`1px solid ${phase.color}40`,
+      borderLeft:`3px solid ${phase.color}`,
+      borderRadius:10,
+      padding:"14px 16px",
+      marginBottom:16,
+    }}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:18}}>{phase.emoji}</span>
+          <span style={{
+            fontFamily:"var(--ff-body)",
+            fontSize:11,fontWeight:700,
+            letterSpacing:"0.1em",
+            color:phase.color,
+            textTransform:"uppercase",
+          }}>
+            Fase {phase.id} · {phase.name}
+          </span>
+        </div>
+        <span style={{
+          fontFamily:"var(--ff-mono)",
+          fontSize:10,color:"var(--text3)",
+        }}>
+          {dayInPhase}/{phaseLength}
+        </span>
+      </div>
+      <div style={{
+        fontFamily:"var(--ff-body)",
+        fontSize:13,fontWeight:500,
+        color:"var(--text)",
+        lineHeight:1.4,
+        marginBottom:10,
+      }}>
+        {phase.headline}
+      </div>
+      {/* Score row */}
+      <div style={{
+        display:"flex",alignItems:"center",gap:12,
+        paddingTop:8,
+        borderTop:`1px solid ${phase.color}20`,
+      }}>
+        <div style={{display:"flex",alignItems:"center",gap:4}}>
+          <span style={{fontSize:11,color:"var(--text3)"}}>🏅</span>
+          <span style={{
+            fontFamily:"var(--ff-display)",fontSize:16,
+            color:"var(--gold)",letterSpacing:"0.04em",
+          }}>{score}</span>
+          <span style={{
+            fontSize:9,fontWeight:600,letterSpacing:"0.08em",
+            color:"var(--text3)",textTransform:"uppercase",
+          }}>SCORE</span>
+        </div>
+        {currentStreak > 0 && (
+          <div style={{display:"flex",alignItems:"center",gap:4}}>
+            <span style={{fontSize:11}}>🔥</span>
+            <span style={{
+              fontFamily:"var(--ff-display)",fontSize:16,
+              color:"var(--green)",letterSpacing:"0.04em",
+            }}>{currentStreak}</span>
+            <span style={{
+              fontSize:9,fontWeight:600,letterSpacing:"0.08em",
+              color:"var(--text3)",textTransform:"uppercase",
+            }}>STREAK</span>
+          </div>
+        )}
+        {vulnerability && (
+          <div style={{
+            marginLeft:"auto",
+            fontSize:10,color:"var(--red)",
+            fontStyle:"italic",
+            textAlign:"right",
+            maxWidth:140,lineHeight:1.2,
+          }}>
+            ⚠ {vulnerability.name?.split(" ").slice(0,2).join(" ")}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// WEIGHT CHART — Mini SVG line chart
+// ═══════════════════════════════════════════════════════════════════
+
+function WeightChart({ weights }) {
+  if (!weights || weights.length < 2) {
+    return (
+      <div style={{
+        padding:"20px 14px",textAlign:"center",
+        color:"var(--text3)",fontSize:12,fontStyle:"italic",
+      }}>
+        Registra il peso almeno 2 giorni per vedere il grafico.
+      </div>
+    );
+  }
+  const W = 300, H = 100, P = 12;
+  const minW = Math.min(...weights.map(w=>w.weight));
+  const maxW = Math.max(...weights.map(w=>w.weight));
+  const range = Math.max(0.5, maxW - minW);
+  const xScale = (i) => P + (i * (W - 2*P)) / Math.max(1, weights.length - 1);
+  const yScale = (w) => H - P - ((w - minW) / range) * (H - 2*P);
+  const path = weights.map((w,i) => `${i?"L":"M"}${xScale(i).toFixed(1)},${yScale(w.weight).toFixed(1)}`).join(" ");
+  const last = weights[weights.length-1];
+  const first = weights[0];
+  const delta = (last.weight - first.weight).toFixed(1);
+
+  return (
+    <div>
+      <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
+        style={{display:"block"}}>
+        <path d={path} fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
+        {weights.map((w,i)=>(
+          <circle key={i} cx={xScale(i)} cy={yScale(w.weight)} r="2.5"
+            fill="var(--gold)" stroke="var(--bg2)" strokeWidth="1.5"/>
+        ))}
+      </svg>
+      <div style={{
+        display:"flex",justifyContent:"space-between",
+        marginTop:8,fontFamily:"var(--ff-mono)",fontSize:10,color:"var(--text3)",
+      }}>
+        <span>G{first.day}: {first.weight}kg</span>
+        <span style={{color:delta>0?"var(--red)":"var(--green)"}}>
+          {delta>0?"+":""}{delta} kg
+        </span>
+        <span>G{last.day}: {last.weight}kg</span>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════════════════════════
 
@@ -125,8 +288,11 @@ export default function App() {
   const [tab, setTab]           = useState("oggi");
   const [note, setNote]         = useState("");
   const [activity, setActivity] = useState("");
+  const [weightInput, setWeightInput] = useState("");
   const [syncing, setSyncing]   = useState(false);
   const [syncOk, setSyncOk]     = useState(false);
+  const [phaseData, setPhaseData] = useState(null);
+  const [weights, setWeights] = useState([]);
 
   useEffect(()=>{ document.documentElement.setAttribute("data-theme",theme); save("sfida_theme",theme); },[theme]);
   useEffect(()=>{ save("sfida60_data",data); },[data]);
@@ -134,11 +300,15 @@ export default function App() {
     const k=`day_${selDay}`;
     setNote(data[k]?.note||"");
     setActivity(data[k]?.activity||"");
+    setWeightInput(data[k]?.weight||"");
   },[selDay,data]);
   useEffect(()=>{
     fetch(`${WORKER}/data`).then(r=>r.json()).then(d=>{
       if(d&&Object.keys(d).length>0){ setData(d); save("sfida60_data",d); }
     }).catch(()=>{});
+    // Fetch phase + weights from backend
+    fetch(`${WORKER}/phase`).then(r=>r.json()).then(setPhaseData).catch(()=>{});
+    fetch(`${WORKER}/weights`).then(r=>r.json()).then(setWeights).catch(()=>{});
   },[]);
 
   const dayKey   = `day_${selDay}`;
@@ -181,7 +351,14 @@ export default function App() {
     });
   },[dayKey]);
 
-  const saveDay = ()=>{ setData(prev=>({...prev,[dayKey]:{...prev[dayKey],note,activity}})); };
+  const saveDay = ()=>{
+    setData(prev=>({...prev,[dayKey]:{
+      ...prev[dayKey],
+      note,
+      activity,
+      ...(weightInput ? {weight: weightInput} : {}),
+    }}));
+  };
 
   const sync = async()=>{
     setSyncing(true);
@@ -334,6 +511,23 @@ export default function App() {
                 display:"flex",alignItems:"center",justifyContent:"center",
               }}>›</button>
             </div>
+
+            {/* ── Phase Banner (Predictive system) ── */}
+            {!isBeforeStart && (() => {
+              const ph = getPhase(selDay);
+              const dayInPhase = selDay - ph.range[0] + 1;
+              const phaseLength = ph.range[1] - ph.range[0] + 1;
+              return (
+                <PhaseBanner
+                  phase={ph}
+                  dayInPhase={dayInPhase}
+                  phaseLength={phaseLength}
+                  score={phaseData?.score || 0}
+                  currentStreak={phaseData?.currentStreak || streak}
+                  vulnerability={phaseData?.vulnerability}
+                />
+              );
+            })()}
 
             {/* Hero card */}
             <div style={{
@@ -539,6 +733,76 @@ export default function App() {
                 onBlur={e=>e.target.style.borderColor="var(--border2)"}
               />
             </div>
+
+            {/* Weight */}
+            <div style={{marginBottom:14}}>
+              <div className="label" style={{marginBottom:6}}>Peso (kg)</div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={weightInput}
+                  onChange={e=>setWeightInput(e.target.value.replace(",","."))}
+                  placeholder="78.5"
+                  style={{
+                    flex:1,background:"var(--bg2)",
+                    border:"1px solid var(--border2)",borderRadius:8,
+                    color:"var(--text)",padding:"11px 13px",
+                    fontSize:14,outline:"none",
+                    fontFamily:"var(--ff-mono)",
+                  }}
+                  onFocus={e=>e.target.style.borderColor="var(--gold)"}
+                  onBlur={e=>e.target.style.borderColor="var(--border2)"}
+                />
+                {(() => {
+                  // Find previous weight for delta
+                  let prev = null;
+                  for (let i=selDay-1; i>=0; i--) {
+                    if (data[`day_${i}`]?.weight) { prev = parseFloat(data[`day_${i}`].weight); break; }
+                  }
+                  const cur = parseFloat(weightInput);
+                  if (prev && !isNaN(cur)) {
+                    const delta = (cur - prev).toFixed(1);
+                    return (
+                      <span style={{
+                        fontFamily:"var(--ff-mono)",fontSize:12,
+                        color:delta>0?"var(--red)":"var(--green)",
+                        flexShrink:0,
+                      }}>
+                        {delta>0?"+":""}{delta} kg
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            </div>
+
+            {/* Photo of the day */}
+            {data[dayKey]?.photoUrl && (
+              <div style={{marginBottom:14}}>
+                <div className="label" style={{marginBottom:6}}>📸 Foto del giorno</div>
+                <a href={data[dayKey].photoUrl} target="_blank" rel="noopener noreferrer"
+                  style={{
+                    display:"flex",alignItems:"center",gap:10,
+                    padding:"12px 14px",
+                    background:"var(--bg2)",
+                    border:"1px solid var(--border)",
+                    borderRadius:8,
+                    textDecoration:"none",
+                    color:"var(--text)",
+                  }}>
+                  <span style={{fontSize:18}}>🖼</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:500}}>Apri su Drive</div>
+                    <div style={{fontSize:11,color:"var(--text3)",fontStyle:"italic",marginTop:2}}>
+                      Salvata automaticamente da Marco
+                    </div>
+                  </div>
+                  <span style={{color:"var(--gold)",fontSize:14}}>→</span>
+                </a>
+              </div>
+            )}
 
             <button onClick={()=>{saveDay();sync();}} style={{
               padding:"11px 24px",minHeight:"auto",
@@ -762,6 +1026,24 @@ export default function App() {
                 </div>
               </div>
             )}
+
+            {/* Weight tracking chart */}
+            <div style={{
+              background:"var(--bg2)",border:"1px solid var(--border)",
+              borderRadius:10,padding:14,marginBottom:12,
+            }}>
+              <div style={{
+                display:"flex",justifyContent:"space-between",
+                alignItems:"baseline",marginBottom:10,
+              }}>
+                <div className="label">⚖️ Peso · trend</div>
+                <span style={{
+                  fontFamily:"var(--ff-mono)",
+                  fontSize:10,color:"var(--text3)",
+                }}>{weights.length} misurazioni</span>
+              </div>
+              <WeightChart weights={weights}/>
+            </div>
 
             {/* Campaign progress */}
             <div style={{
