@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import "./index.css";
 
 // ═══════════════════════════════════════════════════════════════════
-// CONSTANTS
+// DATA
 // ═══════════════════════════════════════════════════════════════════
 
 const SCHEDULE = [
@@ -26,24 +26,24 @@ const SCHEDULE = [
 ];
 
 const BLOCKS = {
-  mattina:    { label:"Boot",       short:"B", color:"#F0A500", items: SCHEDULE.filter(s=>s.block==="mattina")    },
-  logistica:  { label:"Logistica",  short:"L", color:"#3DD68C", items: SCHEDULE.filter(s=>s.block==="logistica")  },
-  pomeriggio: { label:"Pomeriggio", short:"P", color:"#5B9CF6", items: SCHEDULE.filter(s=>s.block==="pomeriggio") },
-  sera:       { label:"Sera",       short:"S", color:"#C084FC", items: SCHEDULE.filter(s=>s.block==="sera")       },
+  mattina:    { label:"Boot",       color:"#F5A623", items:SCHEDULE.filter(s=>s.block==="mattina")    },
+  logistica:  { label:"Logistica",  color:"#2ECC71", items:SCHEDULE.filter(s=>s.block==="logistica")  },
+  pomeriggio: { label:"Pomeriggio", color:"#5DADE2", items:SCHEDULE.filter(s=>s.block==="pomeriggio") },
+  sera:       { label:"Sera",       color:"#BB8FEF", items:SCHEDULE.filter(s=>s.block==="sera")       },
 };
 
 const ACTIVITIES = [
-  { id:"palestra", label:"Palestra",  emoji:"🏋️" },
-  { id:"mare",     label:"Mare",      emoji:"🌊" },
-  { id:"chiese",   label:"Chiese",    emoji:"⛪" },
-  { id:"flair",    label:"Flair",     emoji:"🎸" },
-  { id:"riposo",   label:"Riposo",    emoji:"🛌" },
+  { id:"palestra", label:"Palestra", emoji:"🏋️" },
+  { id:"mare",     label:"Mare",     emoji:"🌊" },
+  { id:"chiese",   label:"Chiese",   emoji:"⛪" },
+  { id:"flair",    label:"Flair",    emoji:"🎸" },
+  { id:"riposo",   label:"Riposo",   emoji:"🛌" },
 ];
 
-const START = new Date("2026-05-04T00:00:00");
-const TOTAL = 60;
-const WORKER = "https://sfida60-motivatore.soliwkr.workers.dev";
-const TG_URL = "https://t.me/sfida60_bot";
+const START   = new Date("2026-05-04T00:00:00");
+const TOTAL   = 60;
+const WORKER  = "https://sfida60-motivatore.soliwkr.workers.dev";
+const TG_URL  = "https://t.me/sfida60_bot";
 const DOC_URL = "https://docs.google.com/document/d/1l66Wo8w18QTg7avNky8rb5iE1FKkcJZz8lyCuGiIkiU/edit";
 
 // ═══════════════════════════════════════════════════════════════════
@@ -54,119 +54,76 @@ const dayIdx  = (d=new Date()) => { const a=new Date(d); a.setHours(0,0,0,0); co
 const dayDate = i => { const d=new Date(START); d.setDate(d.getDate()+i); return d; };
 const fmt     = i => dayDate(i).toLocaleDateString("it-IT",{weekday:"short",day:"numeric",month:"short"});
 const fmtLong = i => dayDate(i).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"});
-const iso     = i => dayDate(i).toISOString().split("T")[0];
-const pctOf   = dd => { if(!dd?.items) return 0; return Math.round(SCHEDULE.filter(s=>dd.items[s.id]).length/SCHEDULE.length*100); };
+const pctOf   = dd => !dd?.items?0:Math.round(SCHEDULE.filter(s=>dd.items[s.id]).length/SCHEDULE.length*100);
 const load    = (k,fb) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):fb; } catch { return fb; } };
 const save    = (k,v)  => { try { localStorage.setItem(k,JSON.stringify(v)); } catch {} };
 
 // ═══════════════════════════════════════════════════════════════════
-// RING COMPONENT
+// ARC RING
 // ═══════════════════════════════════════════════════════════════════
 
-function Ring({ pct, size=120, stroke=7, children }) {
-  const r = size/2 - stroke;
-  const circ = 2*Math.PI*r;
-  const off = circ*(1-pct/100);
-  const color = pct===100?"#F0A500":pct>=70?"#3DD68C":pct>=40?"#5B9CF6":"#3A3838";
+function Arc({ pct, size=96 }) {
+  const stroke=6, r=size/2-stroke-1, circ=2*Math.PI*r, off=circ*(1-pct/100);
+  const color = pct===100?"var(--gold)":pct>=65?"var(--green)":pct>=35?"var(--blue)":"var(--border2)";
   return (
-    <div style={{position:"relative",width:size,height:size,flexShrink:0}}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}
-        style={{transform:"rotate(-90deg)",position:"absolute",inset:0}}>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--bg4)" strokeWidth={stroke}/>
-        {pct>0 && (
-          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color}
-            strokeWidth={stroke} strokeLinecap="round"
-            strokeDasharray={circ} strokeDashoffset={off}
-            style={{transition:"stroke-dashoffset 0.7s cubic-bezier(.4,0,.2,1), stroke 0.4s"}}/>
-        )}
-      </svg>
-      <div style={{
-        position:"absolute",inset:0,
-        display:"flex",flexDirection:"column",
-        alignItems:"center",justifyContent:"center",
-      }}>
-        {children}
-      </div>
-    </div>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}
+      style={{transform:"rotate(-90deg)",position:"absolute",inset:0,flexShrink:0}}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--bg4)" strokeWidth={stroke}/>
+      {pct>0&&<circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color}
+        strokeWidth={stroke} strokeLinecap="round"
+        strokeDasharray={circ} strokeDashoffset={off}
+        style={{transition:"stroke-dashoffset 0.7s cubic-bezier(.4,0,.2,1),stroke 0.4s"}}/>}
+    </svg>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// RADAR CHART
+// RADAR SVG
 // ═══════════════════════════════════════════════════════════════════
 
-function RadarChart({ data, size=180 }) {
-  const blocks = Object.entries(BLOCKS);
-  const n = blocks.length; // 4
-  const cx = size/2, cy = size/2;
-  const maxR = size/2 - 24;
-
-  const angles = blocks.map((_, i) => ((i/n)*2*Math.PI) - Math.PI/2);
-
-  const point = (r, angle) => ({
-    x: cx + r * Math.cos(angle),
-    y: cy + r * Math.sin(angle),
-  });
-
-  const gridLevels = [0.25, 0.5, 0.75, 1];
-
+function Radar({ data, size=180 }) {
+  const blocks=Object.entries(BLOCKS), n=blocks.length, cx=size/2, cy=size/2, maxR=size/2-26;
+  const angles=blocks.map((_,i)=>((i/n)*2*Math.PI)-Math.PI/2);
+  const pt=(r,a)=>({x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)});
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      {/* Grid */}
-      {gridLevels.map(level => {
-        const pts = angles.map(a => point(maxR*level, a));
-        const d = pts.map((p,i)=>`${i===0?"M":"L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")+"Z";
-        return <path key={level} d={d} fill="none" stroke="var(--border)" strokeWidth="1"/>;
+      {[.25,.5,.75,1].map(l=>{
+        const pts=angles.map(a=>pt(maxR*l,a));
+        return <path key={l} d={pts.map((p,i)=>`${i?"L":"M"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")+"Z"}
+          fill="none" stroke={l===1?"var(--border2)":"var(--border)"} strokeWidth={l===1?1:0.5}/>;
       })}
-      {/* Axes */}
-      {angles.map((a,i)=>{
-        const p = point(maxR, a);
-        return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="var(--border)" strokeWidth="1"/>;
-      })}
-      {/* Data polygon */}
-      {(() => {
-        const pts = blocks.map(([block,meta], i) => {
-          const v = data[block] || 0;
-          return point(maxR*(v/100), angles[i]);
-        });
-        const d = pts.map((p,i)=>`${i===0?"M":"L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")+"Z";
-        return (
-          <>
-            <path d={d} fill="rgba(240,165,0,0.15)" stroke="#F0A500" strokeWidth="1.5" strokeLinejoin="round"/>
-            {pts.map((p,i) => (
-              <circle key={i} cx={p.x} cy={p.y} r="3" fill={blocks[i][1].color}/>
-            ))}
-          </>
-        );
+      {angles.map((a,i)=>{ const p=pt(maxR,a); return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="var(--border)" strokeWidth="0.5"/>; })}
+      {(()=>{
+        const pts=blocks.map(([block,meta],i)=>pt(maxR*(data[block]||0)/100,angles[i]));
+        const d=pts.map((p,i)=>`${i?"L":"M"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")+"Z";
+        return <>
+          <path d={d} fill="rgba(245,166,35,0.12)" stroke="var(--gold)" strokeWidth="1.5" strokeLinejoin="round"/>
+          {pts.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r="3.5" fill={blocks[i][1].color} stroke="var(--bg)" strokeWidth="1.5"/>)}
+        </>;
       })()}
-      {/* Labels */}
-      {blocks.map(([block,meta],i) => {
-        const a = angles[i];
-        const lp = point(maxR + 16, a);
-        return (
-          <text key={block} x={lp.x} y={lp.y}
-            textAnchor="middle" dominantBaseline="middle"
-            fill={meta.color} fontSize="10" fontFamily="'Outfit',sans-serif" fontWeight="600">
-            {meta.short}
-          </text>
-        );
+      {blocks.map(([block,meta],i)=>{
+        const a=angles[i], lp=pt(maxR+17,a);
+        return <text key={block} x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle"
+          fill={meta.color} fontSize="10" fontFamily="'IBM Plex Sans',sans-serif" fontWeight="600" letterSpacing="0.06em">
+          {meta.label.slice(0,3).toUpperCase()}
+        </text>;
       })}
     </svg>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MAIN APP
+// MAIN
 // ═══════════════════════════════════════════════════════════════════
 
 export default function App() {
   const todayI = Math.max(0, Math.min(dayIdx(), TOTAL-1));
 
-  const [theme, setTheme]   = useState(()=>load("sfida_theme","dark"));
-  const [data, setData]     = useState(()=>load("sfida60_data",{}));
-  const [selDay, setSelDay] = useState(todayI);
-  const [tab, setTab]       = useState("oggi");
-  const [note, setNote]     = useState("");
+  const [theme, setTheme]       = useState(()=>load("sfida_theme","dark"));
+  const [data, setData]         = useState(()=>load("sfida60_data",{}));
+  const [selDay, setSelDay]     = useState(todayI);
+  const [tab, setTab]           = useState("oggi");
+  const [note, setNote]         = useState("");
   const [activity, setActivity] = useState("");
   const [syncing, setSyncing]   = useState(false);
   const [syncOk, setSyncOk]     = useState(false);
@@ -177,18 +134,15 @@ export default function App() {
     const k=`day_${selDay}`;
     setNote(data[k]?.note||"");
     setActivity(data[k]?.activity||"");
-  },[selDay, data]);
-
-  // Load from worker
+  },[selDay,data]);
   useEffect(()=>{
     fetch(`${WORKER}/data`).then(r=>r.json()).then(d=>{
       if(d&&Object.keys(d).length>0){ setData(d); save("sfida60_data",d); }
     }).catch(()=>{});
   },[]);
 
-  // Computed
   const dayKey   = `day_${selDay}`;
-  const dayItems = data[dayKey]?.items || {};
+  const dayItems = data[dayKey]?.items||{};
 
   const pct2 = useCallback(i=>{
     const it=data[`day_${i}`]?.items||{};
@@ -196,35 +150,11 @@ export default function App() {
   },[data]);
 
   const dayPct    = pct2(selDay);
-  const todayPct  = pct2(todayI);
   const totalDone = useMemo(()=>Array.from({length:TOTAL},(_,i)=>pct2(i)===100?1:0).reduce((a,b)=>a+b,0),[data]);
+  const streak    = useMemo(()=>{ let s=0; for(let i=todayI;i>=0;i--){ if(pct2(i)===100)s++; else break; } return s; },[data,todayI]);
+  const bestStreak= useMemo(()=>{ let b=0,c=0; for(let i=0;i<=todayI;i++){ if(pct2(i)===100){c++;b=Math.max(b,c);}else c=0;} return b; },[data,todayI]);
+  const weekAvg   = useMemo(()=>{ const n=Math.min(7,todayI+1); if(!n) return 0; return Math.round(Array.from({length:n},(_,i)=>pct2(todayI-i)).reduce((a,b)=>a+b,0)/n); },[data,todayI]);
 
-  // Streak
-  const streak = useMemo(()=>{
-    let s=0;
-    for(let i=todayI;i>=0;i--){
-      if(pct2(i)===100) s++; else break;
-    }
-    return s;
-  },[data, todayI]);
-
-  // Best streak
-  const bestStreak = useMemo(()=>{
-    let best=0, cur=0;
-    for(let i=0;i<=todayI;i++){
-      if(pct2(i)===100){ cur++; best=Math.max(best,cur); } else cur=0;
-    }
-    return best;
-  },[data, todayI]);
-
-  // Week avg
-  const weekAvg = useMemo(()=>{
-    const days=Math.min(7,todayI+1);
-    if(!days) return 0;
-    return Math.round(Array.from({length:days},(_,i)=>pct2(todayI-i)).reduce((a,b)=>a+b,0)/days);
-  },[data, todayI]);
-
-  // Block performance for radar
   const blockPerf = useMemo(()=>{
     const out={};
     for(const [block,meta] of Object.entries(BLOCKS)){
@@ -236,29 +166,22 @@ export default function App() {
       out[block]=max>0?Math.round(total/max*100):0;
     }
     return out;
-  },[data, todayI]);
+  },[data,todayI]);
 
-  // Best/worst day
   const bestDay = useMemo(()=>{
     let best={i:-1,pct:0};
     for(let i=0;i<=todayI;i++){ const p=pct2(i); if(p>best.pct) best={i,pct:p}; }
     return best;
-  },[data, todayI]);
+  },[data,todayI]);
 
-  // Toggle item
   const toggle = useCallback(id=>{
     setData(prev=>{
-      const next={...prev};
-      if(!next[dayKey]) next[dayKey]={items:{}};
-      if(!next[dayKey].items) next[dayKey].items={};
-      next[dayKey]={...next[dayKey],items:{...next[dayKey].items,[id]:!next[dayKey].items[id]}};
+      const next={...prev,[dayKey]:{...prev[dayKey],items:{...(prev[dayKey]?.items||{}),[id]:!prev[dayKey]?.items?.[id]}}};
       return next;
     });
   },[dayKey]);
 
-  const saveDay = ()=>{
-    setData(prev=>({...prev,[dayKey]:{...prev[dayKey],note,activity}}));
-  };
+  const saveDay = ()=>{ setData(prev=>({...prev,[dayKey]:{...prev[dayKey],note,activity}})); };
 
   const sync = async()=>{
     setSyncing(true);
@@ -269,251 +192,292 @@ export default function App() {
     setSyncing(false);
   };
 
-  const isBeforeStart = dayIdx() < 0;
+  const isBeforeStart = dayIdx()<0;
 
-  // ─── RENDER ───────────────────────────────────────────────────────
+  // ─── TOKEN COLORS ─────────────────────────────────────────────────
+  const pctColor = p => p===100?"var(--gold)":p>=65?"var(--green)":p>=35?"var(--blue)":"var(--text2)";
 
   return (
     <div style={{
-      display:"flex",flexDirection:"column",height:"100dvh",
-      maxWidth:430,margin:"0 auto",
-      background:"var(--bg)",color:"var(--text)",
-      overflow:"hidden",position:"relative",
+      display:"flex", flexDirection:"column",
+      height:"100dvh", maxWidth:430, margin:"0 auto",
+      background:"var(--bg)", color:"var(--text)",
+      overflow:"hidden",
     }}>
 
       {/* ══ HEADER ══ */}
       <header style={{
-        padding:`calc(var(--safe-top) + 12px) 18px 12px`,
+        padding:`calc(var(--safe-top) + 14px) 20px 12px`,
         borderBottom:"1px solid var(--border)",
         flexShrink:0,
         background:"var(--bg)",
       }}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          {/* Left: branding */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
           <div>
+            {/* Eyebrow */}
             <div style={{
-              fontFamily:"var(--font-display)",
-              fontSize:28, letterSpacing:"0.04em",
-              lineHeight:1, color:"var(--text)",
-            }}>
-              SFIDA<span style={{color:"var(--gold)"}}>60</span>
-            </div>
+              fontFamily:"var(--ff-body)",fontSize:10,fontWeight:600,
+              letterSpacing:"0.1em",color:"var(--text3)",
+              textTransform:"uppercase",marginBottom:3,
+            }}>Sfida 60 Giorni</div>
+            {/* Title */}
             <div style={{
-              fontSize:11,fontWeight:500,color:"var(--text3)",
-              letterSpacing:"0.08em",marginTop:1,
+              fontFamily:"var(--ff-display)",
+              fontSize:30,letterSpacing:"0.04em",
+              color:"var(--text)",lineHeight:1,
             }}>
               {isBeforeStart
-                ? "INIZIA LUN 4 MAGGIO"
-                : `GIORNO ${Math.max(0,dayIdx())+1} · ${fmt(Math.max(0,dayIdx())).toUpperCase()}`}
+                ? <span>Inizia <span style={{color:"var(--gold)"}}>Lunedì</span></span>
+                : <>
+                    <span style={{color:"var(--gold)"}}>G{Math.max(0,dayIdx())+1}</span>
+                    <span style={{fontSize:16,color:"var(--text3)",marginLeft:4}}>/ {TOTAL}</span>
+                  </>
+              }
             </div>
+            {!isBeforeStart && (
+              <div style={{
+                fontSize:12,color:"var(--text3)",marginTop:3,
+                fontStyle:"italic",
+              }}>
+                {fmtLong(Math.max(0,dayIdx()))}
+              </div>
+            )}
           </div>
 
-          {/* Right: controls */}
-          <div style={{display:"flex",alignItems:"center",gap:6}}>
+          {/* Controls */}
+          <div style={{display:"flex",gap:6}}>
             <button onClick={sync} style={{
-              width:32,height:32,borderRadius:8,
-              background:"var(--bg3)",border:"1px solid var(--border2)",
+              width:36,height:36,minHeight:"auto",
+              border:"1px solid var(--border2)",
+              borderRadius:6,background:"var(--bg2)",
               fontSize:13,color:syncOk?"var(--green)":syncing?"var(--text3)":"var(--text2)",
               display:"flex",alignItems:"center",justifyContent:"center",
-              transition:"color 0.2s",
             }}>
-              {syncOk?"✓":syncing?"⟳":"⇅"}
+              {syncOk?"✓":syncing?"·":"⇅"}
             </button>
             <button onClick={()=>setTheme(t=>t==="dark"?"light":"dark")} style={{
-              width:32,height:32,borderRadius:8,
-              background:"var(--bg3)",border:"1px solid var(--border2)",
-              fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",
+              width:36,height:36,minHeight:"auto",
+              border:"1px solid var(--border2)",
+              borderRadius:6,background:"var(--bg2)",
+              fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",
+              color:"var(--text2)",
             }}>
-              {theme==="dark"?"◐":"◑"}
+              {theme==="dark"?"☀":"●"}
             </button>
           </div>
         </div>
 
-        {/* Global progress bar */}
-        <div style={{display:"flex",alignItems:"center",gap:10,marginTop:10}}>
+        {/* Global bar */}
+        <div style={{display:"flex",alignItems:"center",gap:10,marginTop:12}}>
           <div style={{
-            flex:1,height:2,background:"var(--bg4)",
-            borderRadius:1,overflow:"hidden",
+            flex:1,height:3,background:"var(--bg4)",
+            borderRadius:2,overflow:"hidden",
           }}>
             <div style={{
               height:"100%",
               width:`${(totalDone/TOTAL)*100}%`,
               background:"var(--gold)",
+              borderRadius:2,
               transition:"width 0.8s cubic-bezier(.4,0,.2,1)",
             }}/>
           </div>
           <span style={{
-            fontFamily:"var(--font-display)",
-            fontSize:13,color:"var(--gold)",letterSpacing:"0.05em",flexShrink:0,
-          }}>
-            {totalDone}/{TOTAL}
-          </span>
+            fontFamily:"var(--ff-mono)",
+            fontSize:11,color:"var(--gold)",flexShrink:0,
+          }}>{totalDone}/{TOTAL}</span>
         </div>
       </header>
 
       {/* ══ CONTENT ══ */}
       <main style={{flex:1,overflowY:"auto",overscrollBehavior:"contain"}}>
 
-        {/* ════ TAB: OGGI ════ */}
+        {/* ════ OGGI ════ */}
         {tab==="oggi" && (
-          <div style={{padding:"16px 18px 100px"}}>
+          <div style={{padding:"16px 20px 120px"}} className="fade-up">
 
             {/* Day nav */}
-            <div style={{
-              display:"flex",alignItems:"center",gap:0,
-              marginBottom:20,
-            }}>
+            <div style={{display:"flex",gap:0,marginBottom:18}}>
               <button onClick={()=>setSelDay(d=>Math.max(0,d-1))} style={{
-                width:36,height:36,borderRadius:"8px 0 0 8px",
-                background:"var(--bg3)",border:"1px solid var(--border2)",
+                width:44,height:40,minHeight:"auto",
+                border:"1px solid var(--border2)",borderRight:"none",
+                borderRadius:"6px 0 0 6px",background:"var(--bg2)",
                 color:"var(--text2)",fontSize:18,
                 display:"flex",alignItems:"center",justifyContent:"center",
               }}>‹</button>
               <div style={{
-                flex:1,textAlign:"center",
-                padding:"8px 12px",
+                flex:1,textAlign:"center",padding:"0 12px",
+                border:"1px solid var(--border2)",
                 background:"var(--bg2)",
-                borderTop:"1px solid var(--border2)",
-                borderBottom:"1px solid var(--border2)",
+                display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+                height:40,
               }}>
-                <span style={{fontSize:12,fontWeight:600,color:"var(--text2)",letterSpacing:"0.06em"}}>
-                  {fmtLong(selDay).toUpperCase()}
+                <span style={{
+                  fontFamily:"var(--ff-body)",fontSize:13,fontWeight:500,
+                  color:"var(--text2)",letterSpacing:"0.04em",
+                }}>
+                  {fmt(selDay).toUpperCase()}
                 </span>
                 {selDay===todayI && (
                   <span style={{
-                    marginLeft:8,fontSize:9,fontWeight:700,
-                    background:"var(--gold)",color:"#0A0A0A",
-                    padding:"2px 5px",borderRadius:3,letterSpacing:"0.1em",
+                    fontSize:9,fontWeight:700,fontFamily:"var(--ff-body)",
+                    letterSpacing:"0.1em",
+                    background:"var(--gold)",color:"#0D0D0D",
+                    padding:"2px 6px",borderRadius:3,
                   }}>OGGI</span>
                 )}
               </div>
               <button onClick={()=>setSelDay(d=>Math.min(TOTAL-1,d+1))} style={{
-                width:36,height:36,borderRadius:"0 8px 8px 0",
-                background:"var(--bg3)",border:"1px solid var(--border2)",
+                width:44,height:40,minHeight:"auto",
+                border:"1px solid var(--border2)",borderLeft:"none",
+                borderRadius:"0 6px 6px 0",background:"var(--bg2)",
                 color:"var(--text2)",fontSize:18,
                 display:"flex",alignItems:"center",justifyContent:"center",
               }}>›</button>
             </div>
 
-            {/* Hero ring + stats */}
+            {/* Hero card */}
             <div style={{
-              display:"flex",alignItems:"center",gap:20,
-              padding:"20px",borderRadius:14,
-              background:"var(--bg2)",border:"1px solid var(--border)",
+              display:"flex",alignItems:"center",gap:16,
+              padding:"18px 16px",
+              background:"var(--bg2)",
+              border:"1px solid var(--border)",
+              borderRadius:10,
               marginBottom:20,
             }}>
-              <Ring pct={dayPct} size={100} stroke={7}>
+              {/* Ring */}
+              <div style={{position:"relative",width:96,height:96,flexShrink:0}}>
+                <Arc pct={dayPct} size={96}/>
                 <div style={{
-                  fontFamily:"var(--font-display)",
-                  fontSize:30,color:dayPct===100?"var(--gold)":dayPct>=60?"var(--green)":"var(--text)",
-                  lineHeight:1,letterSpacing:"0.02em",
+                  position:"absolute",inset:0,
+                  display:"flex",flexDirection:"column",
+                  alignItems:"center",justifyContent:"center",
                 }}>
-                  {dayPct}
+                  <div style={{
+                    fontFamily:"var(--ff-display)",
+                    fontSize:28,letterSpacing:"0.04em",lineHeight:1,
+                    color:pctColor(dayPct),
+                  }}>{dayPct}</div>
+                  <div style={{
+                    fontFamily:"var(--ff-mono)",
+                    fontSize:9,color:"var(--text3)",marginTop:1,
+                  }}>%</div>
                 </div>
-                <div style={{fontSize:10,fontWeight:500,color:"var(--text3)"}}>%</div>
-              </Ring>
-              <div style={{flex:1}}>
+              </div>
+
+              {/* Stats */}
+              <div style={{flex:1,display:"flex",flexDirection:"column",gap:0}}>
                 {[
-                  {label:"COMPLETATI",  val:`${SCHEDULE.filter(s=>dayItems[s.id]).length}/${SCHEDULE.length}`,  color:"var(--text)"},
-                  {label:"SETTIMANA",   val:`${weekAvg}%`,   color:"var(--blue)"},
-                  {label:"STREAK",      val:`${streak}gg`,   color:streak>0?"var(--green)":"var(--text3)"},
+                  {label:"Completati", val:`${SCHEDULE.filter(s=>dayItems[s.id]).length}/${SCHEDULE.length}`, color:"var(--text)"},
+                  {label:"Settimana",  val:`${weekAvg}%`,  color:"var(--blue)"},
+                  {label:"Streak",     val:`${streak} gg`, color:streak>0?"var(--green)":"var(--text3)"},
                 ].map(({label,val,color},i)=>(
                   <div key={label} style={{
-                    display:"flex",justifyContent:"space-between",alignItems:"baseline",
-                    padding:"4px 0",
+                    display:"flex",justifyContent:"space-between",alignItems:"center",
+                    padding:"7px 0",
                     borderBottom:i<2?"1px solid var(--border)":"none",
                   }}>
-                    <span style={{fontSize:9,fontWeight:600,color:"var(--text3)",letterSpacing:"0.1em"}}>{label}</span>
-                    <span style={{fontFamily:"var(--font-display)",fontSize:20,color,letterSpacing:"0.04em"}}>{val}</span>
+                    <span style={{
+                      fontFamily:"var(--ff-body)",
+                      fontSize:11,fontWeight:500,letterSpacing:"0.05em",
+                      color:"var(--text3)",
+                    }}>{label}</span>
+                    <span style={{
+                      fontFamily:"var(--ff-display)",
+                      fontSize:20,color,letterSpacing:"0.05em",
+                    }}>{val}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Checklist */}
+            {/* Blocks */}
             {Object.entries(BLOCKS).map(([block,meta],bi)=>{
-              const items = meta.items;
-              const doneCnt = items.filter(s=>dayItems[s.id]).length;
-              const allDone = doneCnt===items.length;
+              const items=meta.items;
+              const doneCnt=items.filter(s=>dayItems[s.id]).length;
               return (
-                <div key={block} style={{marginBottom:16}} className={`fade-up stagger-${bi+1}`}>
-                  {/* Block header */}
+                <div key={block} style={{marginBottom:16}} className={`stagger-${bi+1}`}>
+                  {/* Block label */}
                   <div style={{
                     display:"flex",alignItems:"center",justifyContent:"space-between",
-                    marginBottom:6,
+                    marginBottom:6,paddingLeft:2,
                   }}>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <div style={{
-                        width:3,height:14,borderRadius:2,background:meta.color,flexShrink:0,
-                      }}/>
+                    <div style={{display:"flex",alignItems:"center",gap:7}}>
+                      <div style={{width:2,height:12,background:meta.color,borderRadius:1,flexShrink:0}}/>
                       <span style={{
-                        fontFamily:"var(--font-display)",
-                        fontSize:15,letterSpacing:"0.06em",color:meta.color,
-                      }}>{meta.label.toUpperCase()}</span>
+                        fontFamily:"var(--ff-body)",
+                        fontSize:11,fontWeight:700,
+                        letterSpacing:"0.09em",
+                        color:meta.color,
+                        textTransform:"uppercase",
+                      }}>{meta.label}</span>
                     </div>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <div style={{
-                        width:40,height:2,background:"var(--bg4)",borderRadius:1,overflow:"hidden",
-                      }}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      {/* Inline mini bar */}
+                      <div style={{width:44,height:2,background:"var(--bg4)",borderRadius:1,overflow:"hidden"}}>
                         <div style={{height:"100%",width:`${doneCnt/items.length*100}%`,background:meta.color,transition:"width 0.4s"}}/>
                       </div>
-                      <span style={{fontSize:10,fontWeight:600,color:"var(--text3)"}}>
-                        {doneCnt}/{items.length}
-                      </span>
+                      <span style={{
+                        fontFamily:"var(--ff-mono)",
+                        fontSize:10,color:"var(--text3)",
+                      }}>{doneCnt}/{items.length}</span>
                     </div>
                   </div>
 
-                  {/* Items */}
-                  <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                    {items.map(item=>{
+                  {/* Items — piena larghezza, touch-friendly */}
+                  <div style={{
+                    border:"1px solid var(--border)",
+                    borderRadius:8,overflow:"hidden",
+                  }}>
+                    {items.map((item,ii)=>{
                       const done=!!dayItems[item.id];
                       return (
                         <button key={item.id} onClick={()=>toggle(item.id)} style={{
-                          display:"flex",alignItems:"center",gap:11,
-                          padding:"10px 12px",borderRadius:8,textAlign:"left",
-                          background:done?`${meta.color}0D`:"var(--bg2)",
-                          border:`1px solid ${done?meta.color+"30":"var(--border)"}`,
-                          transition:"all 0.15s ease",
-                          width:"100%",
+                          display:"flex",alignItems:"center",gap:12,
+                          padding:"11px 14px",
+                          width:"100%",textAlign:"left",
+                          minHeight:48, // touch target
+                          background:done?`${meta.color}0F`:"var(--bg2)",
+                          borderBottom:ii<items.length-1?"1px solid var(--border)":"none",
+                          transition:"background 0.15s",
                         }}>
                           {/* Checkbox */}
                           <div style={{
-                            width:20,height:20,borderRadius:5,flexShrink:0,
-                            border:`1.5px solid ${done?meta.color:"var(--border2)"}`,
+                            width:22,height:22,flexShrink:0,
+                            borderRadius:6,
+                            border:`1.5px solid ${done?meta.color:"var(--border-hi)"}`,
                             background:done?meta.color:"transparent",
                             display:"flex",alignItems:"center",justifyContent:"center",
                             transition:"all 0.15s",
                           }}>
-                            {done && (
+                            {done&&(
                               <svg width="11" height="9" viewBox="0 0 11 9" fill="none"
                                 style={{animation:"checkIn 0.2s ease both"}}>
-                                <path d="M1.5 4.5L4 7L9.5 1.5" stroke="#0A0A0A"
+                                <path d="M1.5 4.5L4 7L9.5 1.5" stroke="#0D0D0D"
                                   strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                               </svg>
                             )}
                           </div>
-                          <span style={{fontSize:16,flexShrink:0}}>{item.emoji}</span>
+
+                          {/* Emoji */}
+                          <span style={{fontSize:18,flexShrink:0,lineHeight:1}}>{item.emoji}</span>
+
+                          {/* Label + time */}
                           <div style={{flex:1,minWidth:0}}>
                             <span style={{
-                              fontSize:13,fontWeight:500,
+                              fontFamily:"var(--ff-body)",
+                              fontSize:15,fontWeight:done?500:400,
                               color:done?"var(--text)":"var(--text2)",
-                              transition:"color 0.15s",
+                              lineHeight:1.3,
                             }}>{item.label}</span>
-                            {item.time && (
+                            {item.time&&(
                               <span style={{
-                                marginLeft:6,fontSize:11,
-                                fontFamily:"'Outfit',monospace",fontWeight:300,
-                                color:"var(--text3)",
+                                fontFamily:"var(--ff-mono)",
+                                fontSize:10,color:"var(--text4)",marginLeft:7,
                               }}>{item.time}</span>
                             )}
                           </div>
-                          {done && (
-                            <div style={{
-                              width:5,height:5,borderRadius:"50%",
-                              background:meta.color,flexShrink:0,
-                              animation:"fadeIn 0.2s ease",
-                            }}/>
-                          )}
+
+                          {done&&<span style={{color:meta.color,fontSize:12,flexShrink:0,animation:"fadeIn 0.2s ease"}}>✓</span>}
                         </button>
                       );
                     })}
@@ -522,12 +486,19 @@ export default function App() {
               );
             })}
 
+            {/* Divider */}
+            <div style={{
+              display:"flex",alignItems:"center",gap:10,
+              margin:"20px 0 16px",color:"var(--text4)",
+            }}>
+              <div style={{flex:1,height:1,background:"var(--border)"}}/>
+              <span style={{fontSize:10,fontWeight:600,letterSpacing:"0.1em",color:"var(--text3)"}}>POMERIGGIO</span>
+              <div style={{flex:1,height:1,background:"var(--border)"}}/>
+            </div>
+
             {/* Activity */}
-            <div style={{marginTop:4,marginBottom:14}}>
-              <div style={{
-                fontSize:9,fontWeight:700,letterSpacing:"0.12em",
-                color:"var(--text3)",marginBottom:8,
-              }}>ATTIVITÀ POMERIGGIO</div>
+            <div style={{marginBottom:16}}>
+              <div className="label" style={{marginBottom:8}}>Attività</div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {ACTIVITIES.map(a=>{
                   const sel=activity===`${a.emoji} ${a.label}`;
@@ -535,10 +506,12 @@ export default function App() {
                     <button key={a.id}
                       onClick={()=>setActivity(x=>x===`${a.emoji} ${a.label}`?"":`${a.emoji} ${a.label}`)}
                       style={{
-                        padding:"7px 12px",borderRadius:20,
-                        fontSize:12,fontWeight:500,
+                        padding:"8px 14px",
+                        borderRadius:20,minHeight:36,
+                        fontFamily:"var(--ff-body)",
+                        fontSize:13,fontWeight:500,
                         background:sel?"var(--gold)":"var(--bg2)",
-                        color:sel?"#0A0A0A":"var(--text2)",
+                        color:sel?"#0D0D0D":"var(--text2)",
                         border:`1px solid ${sel?"var(--gold)":"var(--border2)"}`,
                         transition:"all 0.15s",
                       }}>
@@ -550,103 +523,92 @@ export default function App() {
             </div>
 
             {/* Note */}
-            <div style={{marginBottom:8}}>
-              <div style={{
-                fontSize:9,fontWeight:700,letterSpacing:"0.12em",
-                color:"var(--text3)",marginBottom:6,
-              }}>NOTE</div>
+            <div style={{marginBottom:14}}>
+              <div className="label" style={{marginBottom:6}}>Note</div>
               <textarea value={note} onChange={e=>setNote(e.target.value)}
-                placeholder="Annotazione del giorno…" rows={2}
+                placeholder="Annota…" rows={2}
                 style={{
                   width:"100%",background:"var(--bg2)",
-                  border:"1px solid var(--border)",borderRadius:8,
-                  color:"var(--text)",padding:"10px 12px",
-                  fontSize:13,lineHeight:1.5,
+                  border:"1px solid var(--border2)",borderRadius:8,
+                  color:"var(--text)",padding:"11px 13px",
+                  fontSize:14,lineHeight:1.55,
                   resize:"none",outline:"none",
                   transition:"border-color 0.15s",
                 }}
                 onFocus={e=>e.target.style.borderColor="var(--gold)"}
-                onBlur={e=>e.target.style.borderColor="var(--border)"}
+                onBlur={e=>e.target.style.borderColor="var(--border2)"}
               />
             </div>
+
             <button onClick={()=>{saveDay();sync();}} style={{
-              padding:"9px 20px",
-              background:"var(--gold)",color:"#0A0A0A",
-              borderRadius:8,fontSize:12,fontWeight:700,
-              letterSpacing:"0.06em",
-            }}>SALVA</button>
+              padding:"11px 24px",minHeight:"auto",
+              background:"var(--gold)",color:"#0D0D0D",
+              borderRadius:8,
+              fontFamily:"var(--ff-body)",fontSize:13,fontWeight:700,
+              letterSpacing:"0.05em",
+            }}>Salva</button>
           </div>
         )}
 
-        {/* ════ TAB: MAPPA ════ */}
+        {/* ════ MAPPA ════ */}
         {tab==="mappa" && (
-          <div style={{padding:"16px 18px 100px"}} className="fade-up">
+          <div style={{padding:"16px 20px 120px"}} className="fade-up">
 
-            {/* 3 stat cards */}
+            {/* Stat cards */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
               {[
-                {label:"COMPLETI",  val:totalDone,               color:"var(--gold)"},
-                {label:"STREAK",    val:`${streak}`,             color:streak>0?"var(--green)":"var(--text3)", suffix:"gg"},
-                {label:"RIMASTI",   val:Math.max(0,59-todayI),   color:"var(--text2)"},
-              ].map(({label,val,color,suffix})=>(
+                {label:"Completi",  val:totalDone,                 color:"var(--gold)"},
+                {label:"Streak",    val:streak,    suffix:" gg",   color:streak>0?"var(--green)":"var(--text3)"},
+                {label:"Rimasti",   val:Math.max(0,59-todayI),     color:"var(--text2)"},
+              ].map(({label,val,suffix,color})=>(
                 <div key={label} style={{
                   background:"var(--bg2)",border:"1px solid var(--border)",
-                  borderRadius:10,padding:"12px 10px",textAlign:"center",
+                  borderRadius:10,padding:"14px 10px",textAlign:"center",
                 }}>
                   <div style={{
-                    fontFamily:"var(--font-display)",
-                    fontSize:26,color,letterSpacing:"0.04em",lineHeight:1,
+                    fontFamily:"var(--ff-display)",
+                    fontSize:30,color,letterSpacing:"0.04em",lineHeight:1,
                   }}>
-                    {val}{suffix&&<span style={{fontSize:14}}>{suffix}</span>}
+                    {val}{suffix&&<span style={{fontSize:16}}>{suffix}</span>}
                   </div>
-                  <div style={{
-                    fontSize:9,fontWeight:700,letterSpacing:"0.1em",
-                    color:"var(--text3)",marginTop:4,
-                  }}>{label}</div>
+                  <div className="label" style={{marginTop:4}}>{label}</div>
                 </div>
               ))}
             </div>
 
-            {/* 60-day grid */}
+            {/* Grid */}
             <div style={{
               background:"var(--bg2)",border:"1px solid var(--border)",
-              borderRadius:12,padding:14,marginBottom:12,
+              borderRadius:10,padding:14,marginBottom:12,
             }}>
-              <div style={{
-                fontSize:9,fontWeight:700,letterSpacing:"0.12em",
-                color:"var(--text3)",marginBottom:10,
-              }}>60 GIORNI</div>
+              <div className="label" style={{marginBottom:10}}>60 Giorni</div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(10,1fr)",gap:3}}>
                 {Array.from({length:TOTAL},(_,i)=>{
                   const p=pct2(i);
-                  const isToday=i===todayI, isSel=i===selDay, future=i>todayI;
+                  const isToday=i===todayI,isSel=i===selDay,future=i>todayI;
                   return (
-                    <div key={i}
-                      title={`G${i+1} · ${fmt(i)} · ${p}%`}
+                    <div key={i} title={`G${i+1} · ${fmt(i)} · ${p}%`}
                       onClick={()=>{setSelDay(i);setTab("oggi");}}
                       style={{
-                        aspectRatio:"1",borderRadius:3,cursor:"pointer",
-                        background:future?"var(--bg3)":p===100?"var(--gold)":p>0?`rgba(240,165,0,${0.07+p/100*0.45})`:"var(--bg4)",
-                        border:isSel?`2px solid var(--gold)`:isToday?`1.5px solid var(--blue)`:`1px solid transparent`,
-                        transition:"transform 0.08s,opacity 0.1s",
+                        aspectRatio:"1",cursor:"pointer",borderRadius:3,
+                        background:future?"var(--bg4)":p===100?"var(--gold)":p>0?`rgba(245,166,35,${0.08+p/100*0.44})`:"var(--bg3)",
+                        border:isSel?"2px solid var(--gold)":isToday?"2px solid var(--blue)":"1px solid transparent",
                         opacity:future?0.3:1,
+                        transition:"transform 0.08s",
+                        boxShadow:p===100?"0 0 5px rgba(245,166,35,0.3)":"none",
                       }}
-                      onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.3)";e.currentTarget.style.zIndex=10;}}
+                      onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.3)";e.currentTarget.style.zIndex=5;}}
                       onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.zIndex=0;}}
                     />
                   );
                 })}
               </div>
               {/* Legend */}
-              <div style={{display:"flex",gap:10,marginTop:10}}>
-                {[
-                  ["var(--gold)","100%"],
-                  ["rgba(240,165,0,0.3)","parz."],
-                  ["var(--bg4)","0%"],
-                ].map(([c,l])=>(
+              <div style={{display:"flex",gap:10,marginTop:10,flexWrap:"wrap"}}>
+                {[["var(--gold)","Completo"],["rgba(245,166,35,0.3)","Parziale"],["var(--bg3)","0%"]].map(([c,l])=>(
                   <div key={l} style={{display:"flex",alignItems:"center",gap:4}}>
                     <div style={{width:7,height:7,borderRadius:1,background:c}}/>
-                    <span style={{fontSize:9,fontWeight:600,color:"var(--text3)",letterSpacing:"0.06em"}}>{l.toUpperCase()}</span>
+                    <span className="label">{l}</span>
                   </div>
                 ))}
               </div>
@@ -655,31 +617,27 @@ export default function App() {
             {/* Week bars */}
             <div style={{
               background:"var(--bg2)",border:"1px solid var(--border)",
-              borderRadius:12,padding:14,marginBottom:12,
+              borderRadius:10,padding:14,marginBottom:12,
             }}>
-              <div style={{
-                fontSize:9,fontWeight:700,letterSpacing:"0.12em",
-                color:"var(--text3)",marginBottom:12,
-              }}>ULTIMI 7 GIORNI</div>
+              <div className="label" style={{marginBottom:12}}>Ultimi 7 giorni</div>
               <div style={{display:"flex",gap:4,alignItems:"flex-end",height:60}}>
                 {Array.from({length:7},(_,i)=>{
                   const di=todayI-6+i;
                   if(di<0) return <div key={i} style={{flex:1}}/>;
-                  const p=pct2(di);
-                  const isT=di===todayI;
+                  const p=pct2(di),isT=di===todayI;
                   return (
-                    <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                    <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
                       <div style={{
-                        width:"100%",borderRadius:3,
+                        width:"100%",
                         height:`${Math.max(p*0.54,2)}px`,
                         background:isT?"var(--gold)":p===100?"var(--green)":"var(--bg4)",
-                        minHeight:2,
+                        borderRadius:2,minHeight:2,
                         transition:"height 0.5s cubic-bezier(.4,0,.2,1)",
                         opacity:p===0?0.3:1,
                       }}/>
                       <span style={{
-                        fontSize:9,fontWeight:600,
-                        color:isT?"var(--gold)":"var(--text3)",
+                        fontFamily:"var(--ff-mono)",
+                        fontSize:9,color:isT?"var(--gold)":"var(--text3)",
                       }}>
                         {dayDate(di).toLocaleDateString("it-IT",{weekday:"narrow"})}
                       </span>
@@ -689,27 +647,27 @@ export default function App() {
               </div>
             </div>
 
-            {/* Block performance */}
+            {/* Block bars */}
             <div style={{
               background:"var(--bg2)",border:"1px solid var(--border)",
-              borderRadius:12,padding:14,
+              borderRadius:10,padding:14,
             }}>
-              <div style={{
-                fontSize:9,fontWeight:700,letterSpacing:"0.12em",
-                color:"var(--text3)",marginBottom:12,
-              }}>PERFORMANCE PER BLOCCO</div>
+              <div className="label" style={{marginBottom:12}}>Per blocco</div>
               {Object.entries(BLOCKS).map(([block,meta])=>{
                 const p=blockPerf[block]||0;
                 return (
                   <div key={block} style={{marginBottom:10}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
                       <div style={{display:"flex",alignItems:"center",gap:6}}>
-                        <div style={{width:6,height:6,borderRadius:1,background:meta.color}}/>
-                        <span style={{fontSize:11,fontWeight:600,color:"var(--text2)"}}>{meta.label}</span>
+                        <div style={{width:2,height:10,background:meta.color,borderRadius:1,flexShrink:0}}/>
+                        <span style={{
+                          fontFamily:"var(--ff-body)",
+                          fontSize:12,fontWeight:500,color:"var(--text2)",
+                        }}>{meta.label}</span>
                       </div>
                       <span style={{
-                        fontFamily:"var(--font-display)",
-                        fontSize:16,color:meta.color,letterSpacing:"0.04em",
+                        fontFamily:"var(--ff-display)",
+                        fontSize:18,color:meta.color,letterSpacing:"0.04em",
                       }}>{p}%</span>
                     </div>
                     <div style={{height:3,background:"var(--bg4)",borderRadius:2,overflow:"hidden"}}>
@@ -725,33 +683,35 @@ export default function App() {
           </div>
         )}
 
-        {/* ════ TAB: STATS ════ */}
+        {/* ════ STATS ════ */}
         {tab==="stats" && (
-          <div style={{padding:"16px 18px 100px"}} className="fade-up">
+          <div style={{padding:"16px 20px 120px"}} className="fade-up">
 
-            {/* Big numbers row */}
-            <div style={{
-              display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12,
-            }}>
+            {/* 4 big numbers */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
               {[
-                {label:"GIORNI COMPLETI",   val:totalDone,   sub:`su ${todayI+1} trascorsi`,  color:"var(--gold)"},
-                {label:"STREAK CORRENTE",   val:streak,      sub:"giorni consecutivi",         color:streak>0?"var(--green)":"var(--text3)"},
-                {label:"MIGLIOR STREAK",    val:bestStreak,  sub:"giorni di fila",             color:"var(--blue)"},
-                {label:"MEDIA SETTIMANA",   val:`${weekAvg}%`, sub:"ultimi 7 giorni",          color:"var(--text)"},
+                {label:"Giorni completi", val:totalDone,    sub:`su ${todayI+1} trascorsi`,  color:"var(--gold)"},
+                {label:"Streak corrente", val:streak,       sub:"giorni consecutivi",          color:streak>0?"var(--green)":"var(--text3)"},
+                {label:"Miglior streak",  val:bestStreak,   sub:"record assoluto",             color:"var(--blue)"},
+                {label:"Media settimana", val:`${weekAvg}%`,sub:"ultimi 7 giorni",             color:"var(--text2)"},
               ].map(({label,val,sub,color})=>(
                 <div key={label} style={{
                   background:"var(--bg2)",border:"1px solid var(--border)",
-                  borderRadius:12,padding:"14px 14px",
+                  borderRadius:10,padding:"16px 14px",
                 }}>
                   <div style={{
-                    fontSize:9,fontWeight:700,letterSpacing:"0.1em",
-                    color:"var(--text3)",marginBottom:6,
+                    fontFamily:"var(--ff-display)",
+                    fontSize:38,color,letterSpacing:"0.03em",lineHeight:1,
+                  }}>{val}</div>
+                  <div style={{
+                    fontFamily:"var(--ff-body)",
+                    fontSize:11,fontWeight:600,color:"var(--text3)",
+                    letterSpacing:"0.06em",marginTop:6,textTransform:"uppercase",
                   }}>{label}</div>
                   <div style={{
-                    fontFamily:"var(--font-display)",
-                    fontSize:36,color,letterSpacing:"0.03em",lineHeight:1,
-                  }}>{val}</div>
-                  <div style={{fontSize:10,color:"var(--text3)",marginTop:4}}>{sub}</div>
+                    fontFamily:"var(--ff-body)",fontStyle:"italic",
+                    fontSize:11,color:"var(--text4)",marginTop:3,
+                  }}>{sub}</div>
                 </div>
               ))}
             </div>
@@ -759,97 +719,64 @@ export default function App() {
             {/* Radar */}
             <div style={{
               background:"var(--bg2)",border:"1px solid var(--border)",
-              borderRadius:12,padding:14,marginBottom:12,
+              borderRadius:10,padding:14,marginBottom:12,
               display:"flex",flexDirection:"column",alignItems:"center",
             }}>
-              <div style={{
-                fontSize:9,fontWeight:700,letterSpacing:"0.12em",
-                color:"var(--text3)",marginBottom:12,alignSelf:"flex-start",
-              }}>RADAR BLOCCHI</div>
-              <RadarChart data={blockPerf} size={180}/>
-              <div style={{display:"flex",gap:12,marginTop:8,flexWrap:"wrap",justifyContent:"center"}}>
+              <div className="label" style={{marginBottom:12,alignSelf:"flex-start"}}>Radar blocchi</div>
+              <Radar data={blockPerf} size={188}/>
+              <div style={{display:"flex",gap:12,marginTop:10,flexWrap:"wrap",justifyContent:"center"}}>
                 {Object.entries(BLOCKS).map(([block,meta])=>(
                   <div key={block} style={{display:"flex",alignItems:"center",gap:4}}>
                     <div style={{width:6,height:6,borderRadius:1,background:meta.color}}/>
-                    <span style={{fontSize:10,fontWeight:600,color:meta.color}}>{meta.short}</span>
-                    <span style={{fontSize:10,color:"var(--text3)"}}>{blockPerf[block]||0}%</span>
+                    <span style={{
+                      fontFamily:"var(--ff-body)",
+                      fontSize:11,fontWeight:600,color:meta.color,
+                    }}>{meta.label}</span>
+                    <span className="mono" style={{color:"var(--text3)"}}>{blockPerf[block]||0}%</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Miglior giorno */}
-            {bestDay.i>=0 && (
+            {/* Best day */}
+            {bestDay.i>=0&&(
               <div style={{
                 background:"var(--bg2)",border:"1px solid var(--border)",
-                borderRadius:12,padding:14,marginBottom:12,
-                display:"flex",alignItems:"center",gap:14,
+                borderRadius:10,padding:16,marginBottom:12,
+                display:"flex",alignItems:"center",gap:16,
               }}>
                 <div style={{
-                  fontFamily:"var(--font-display)",
-                  fontSize:42,color:"var(--gold)",letterSpacing:"0.03em",flexShrink:0,
+                  fontFamily:"var(--ff-display)",
+                  fontSize:52,color:"var(--gold)",letterSpacing:"0.03em",
+                  lineHeight:1,flexShrink:0,
                 }}>G{bestDay.i+1}</div>
                 <div>
-                  <div style={{
-                    fontSize:9,fontWeight:700,letterSpacing:"0.1em",
-                    color:"var(--text3)",marginBottom:4,
-                  }}>MIGLIOR GIORNO</div>
-                  <div style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>
+                  <div className="label" style={{marginBottom:4}}>Miglior giorno</div>
+                  <div style={{fontSize:14,fontWeight:500,color:"var(--text)"}}>
                     {fmtLong(bestDay.i)}
                   </div>
-                  <div style={{fontSize:11,color:"var(--gold)",fontWeight:600,marginTop:2}}>
-                    {bestDay.pct}% completato
-                  </div>
+                  <div style={{
+                    fontFamily:"var(--ff-display)",
+                    fontSize:18,color:"var(--gold)",marginTop:4,letterSpacing:"0.04em",
+                  }}>{bestDay.pct}%</div>
                 </div>
               </div>
             )}
 
-            {/* Links */}
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              <div style={{
-                fontSize:9,fontWeight:700,letterSpacing:"0.12em",
-                color:"var(--text3)",marginBottom:2,
-              }}>COLLEGAMENTI</div>
-              {[
-                {label:"Dossier su Google Docs",  icon:"📄",  url:DOC_URL,  color:"var(--blue)"},
-                {label:"Marco su Telegram",       icon:"✈️",  url:TG_URL,   color:"var(--green)"},
-              ].map(({label,icon,url,color})=>(
-                <a key={label} href={url} target="_blank" rel="noopener noreferrer" style={{
-                  display:"flex",alignItems:"center",gap:12,
-                  padding:"12px 14px",borderRadius:10,
-                  background:"var(--bg2)",border:"1px solid var(--border)",
-                  textDecoration:"none",
-                  transition:"border-color 0.15s",
-                }}
-                onMouseEnter={e=>e.currentTarget.style.borderColor=color}
-                onMouseLeave={e=>e.currentTarget.style.borderColor="var(--border)"}
-                >
-                  <span style={{fontSize:20}}>{icon}</span>
-                  <span style={{fontSize:13,fontWeight:500,color:"var(--text)"}}>{label}</span>
-                  <span style={{marginLeft:"auto",fontSize:11,color:"var(--text3)"}}>→</span>
-                </a>
-              ))}
-            </div>
-
-            {/* Sfida completa progress */}
+            {/* Campaign progress */}
             <div style={{
-              marginTop:12,
               background:"var(--bg2)",border:"1px solid var(--border)",
-              borderRadius:12,padding:14,
+              borderRadius:10,padding:14,marginBottom:12,
             }}>
               <div style={{
                 display:"flex",justifyContent:"space-between",
                 alignItems:"baseline",marginBottom:10,
               }}>
-                <div style={{
-                  fontSize:9,fontWeight:700,letterSpacing:"0.12em",color:"var(--text3)",
-                }}>AVANZAMENTO SFIDA</div>
-                <div style={{
-                  fontFamily:"var(--font-display)",
-                  fontSize:20,color:"var(--gold)",
-                }}>
-                  {Math.round((totalDone/TOTAL)*100)}%
-                </div>
+                <div className="label">Avanzamento sfida</div>
+                <span style={{
+                  fontFamily:"var(--ff-display)",
+                  fontSize:20,color:"var(--gold)",letterSpacing:"0.04em",
+                }}>{Math.round((totalDone/TOTAL)*100)}%</span>
               </div>
               <div style={{height:6,background:"var(--bg4)",borderRadius:3,overflow:"hidden",marginBottom:8}}>
                 <div style={{
@@ -861,12 +788,39 @@ export default function App() {
                 }}/>
               </div>
               <div style={{
-                fontSize:10,color:"var(--text3)",
                 display:"flex",justifyContent:"space-between",
+                fontFamily:"var(--ff-mono)",fontSize:9,color:"var(--text4)",
               }}>
-                <span>G1 · 4 MAG</span>
-                <span>G60 · 2 LUG</span>
+                <span>4 MAG</span>
+                <span>2 LUG</span>
               </div>
+            </div>
+
+            {/* Links */}
+            <div className="label" style={{marginBottom:8}}>Link rapidi</div>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {[
+                {label:"Dossier Google Docs", sub:"Cronache di Marco",    icon:"📄", url:DOC_URL, color:"var(--blue)"},
+                {label:"Marco su Telegram",   sub:"Coach e motivatore",   icon:"✈️", url:TG_URL,  color:"var(--green)"},
+              ].map(({label,sub,icon,url,color})=>(
+                <a key={label} href={url} target="_blank" rel="noopener noreferrer" style={{
+                  display:"flex",alignItems:"center",gap:12,
+                  padding:"13px 14px",
+                  background:"var(--bg2)",border:"1px solid var(--border)",
+                  borderRadius:10,textDecoration:"none",
+                  minHeight:56,transition:"border-color 0.15s",
+                }}
+                onMouseEnter={e=>e.currentTarget.style.borderColor=color}
+                onMouseLeave={e=>e.currentTarget.style.borderColor="var(--border)"}
+                >
+                  <span style={{fontSize:22,flexShrink:0}}>{icon}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:500,color:"var(--text)"}}>{label}</div>
+                    <div style={{fontSize:11,color:"var(--text3)",fontStyle:"italic",marginTop:1}}>{sub}</div>
+                  </div>
+                  <span style={{fontSize:14,color:"var(--text3)"}}>→</span>
+                </a>
+              ))}
             </div>
           </div>
         )}
@@ -877,41 +831,37 @@ export default function App() {
         display:"flex",
         borderTop:"1px solid var(--border)",
         background:"var(--bg)",
-        paddingBottom:"var(--safe-bottom)",
-        flexShrink:0,
-        position:"relative",
-        zIndex:10,
+        paddingBottom:"calc(var(--safe-bottom) + 4px)",
+        flexShrink:0,position:"relative",zIndex:10,
       }}>
         {[
-          {id:"oggi",  icon:"○", label:"OGGI"},
-          {id:"mappa", icon:"⬛", label:"MAPPA"},
-          {id:"stats", icon:"◈", label:"STATS"},
-        ].map(({id,icon,label})=>{
+          {id:"oggi",  label:"Oggi",  sub:selDay===todayI?"oggi":`G${selDay+1}`},
+          {id:"mappa", label:"Mappa", sub:`${totalDone}/60`},
+          {id:"stats", label:"Stats", sub:`${weekAvg}%`},
+        ].map(({id,label,sub})=>{
           const active=tab===id;
           return (
             <button key={id} onClick={()=>setTab(id)} style={{
-              flex:1,
-              padding:"12px 0 10px",
+              flex:1,minHeight:"auto",
+              padding:"10px 0 8px",
               display:"flex",flexDirection:"column",alignItems:"center",gap:2,
               color:active?"var(--gold)":"var(--text3)",
-              transition:"color 0.15s",
-              position:"relative",
+              transition:"color 0.15s",position:"relative",
             }}>
-              {active && (
+              {active&&(
                 <div style={{
                   position:"absolute",top:0,left:"20%",right:"20%",
-                  height:1.5,background:"var(--gold)",borderRadius:1,
+                  height:2,background:"var(--gold)",borderRadius:"0 0 2px 2px",
                 }}/>
               )}
               <span style={{
-                fontFamily:"var(--font-display)",
-                fontSize:16,letterSpacing:"0.04em",lineHeight:1,
+                fontFamily:"var(--ff-display)",
+                fontSize:16,letterSpacing:"0.05em",lineHeight:1,
               }}>{label}</span>
-              <span style={{fontSize:8,fontWeight:600,letterSpacing:"0.08em",opacity:0.7}}>
-                {id==="oggi"?`G${selDay+1}`
-                 :id==="mappa"?`${totalDone}/60`
-                 :`${weekAvg}%`}
-              </span>
+              <span style={{
+                fontFamily:"var(--ff-mono)",
+                fontSize:9,opacity:0.7,
+              }}>{sub}</span>
             </button>
           );
         })}
